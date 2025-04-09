@@ -31,6 +31,9 @@ const client = new Client({
 // Variable global para rastrear si estamos esperando una consulta
 let waitingForQuery = {};
 
+// Comandos de activación para iniciar el bot
+const startCommands = ['!start', 'hola', 'consulta', 'inicio', 'comenzar', 'ayuda', 'start', 'hi', 'hello'];
+
 client.on('qr', qr => {
     console.log('📷 Escanea el código QR con tu WhatsApp:');
     console.log(qr);
@@ -45,7 +48,7 @@ client.on('message', async message => {
         console.log(`📩 Mensaje recibido de ${message.from}: ${message.body}`);
 
         // 🔹 Responder solo a un número específico
-        const numeroAutorizado = '51992198356@c.us'; // Formato de WhatsApp sin "+" y con "c.us"
+        const numeroAutorizado = '51919739431@c.us'; // Formato de WhatsApp sin "+" y con "c.us"
         if (message.from !== numeroAutorizado) {
             console.log('⛔ Mensaje ignorado, no es del número autorizado.');
             return;
@@ -71,9 +74,12 @@ client.on('message', async message => {
             }
         }
 
-        if (message.body === '!start') {
+        // Verificar si el mensaje es un comando de activación (case insensitive)
+        const userMessage = message.body.trim().toLowerCase();
+        if (startCommands.includes(userMessage)) {
             // Resetear el estado de espera cuando se inicia el bot
             waitingForQuery[message.from] = false;
+            console.log(`🚀 Comando de activación detectado: ${userMessage}`);
             await sendWelcomeMenu(message);
         } else {
             await handleMenuOptions(message);
@@ -114,6 +120,7 @@ async function handleMenuOptions(message) {
     }
 
     const userOption = message.body.trim();
+    const userOptionLower = userOption.toLowerCase(); // Convertir a minúsculas para comparación
     
     // Si estamos esperando una consulta para este número, no procesamos como opción de menú
     if (waitingForQuery[message.from]) {
@@ -122,8 +129,12 @@ async function handleMenuOptions(message) {
         return;
     }
 
-    if (userOption === '4') {
-        // Opción 4: Consulta con Ollama usando el catálogo PDF
+    // Ignorar silenciosamente 'menu' y 'salir'
+    if (userOptionLower === 'menu' || userOptionLower === 'salir') {
+        console.log(`🔇 Ignorando silenciosamente la palabra clave: ${userOptionLower}`);
+        return; // No hacer nada, simplemente retornar
+    } else if (userOption === '4') {
+        // Opción 4: Consulta con Gemini usando el catálogo PDF
         // Marcar que estamos esperando una consulta de este número
         waitingForQuery[message.from] = true;
         
@@ -145,51 +156,66 @@ async function handleMenuOptions(message) {
 
 async function handleCatalogQuery(message) {
     try {
-        await message.reply("🔍 Has seleccionado la opción de consulta al catálogo. Por favor, escribe tu pregunta sobre el catálogo.");
         
-        // Configurar un listener temporal para la pregunta del usuario
-        const listener = async (msg) => {
+        const exitCommands = ['salir', 'exit', 'menu', 'volver', 'regresar', 'terminar', 'finalizar', '!menu', '!start'];
+        
+        await message.reply("🔍 *Modo Consulta al Catálogo*\n\nAhora puedes hacer preguntas continuas sobre el catálogo.\nEscribe cualquier pregunta y Gemini AI te responderá.\nPara volver al menú principal, escribe *salir* o *menu*.");
+        
+        // Configurar un listener para escuchar múltiples preguntas
+        const continuousListener = async (msg) => {
+            
             if (msg.from === message.from) {
-                // Eliminar el listener después de recibir el mensaje
-                client.removeListener('message', listener);
+                const userMessage = msg.body.trim().toLowerCase();
                 
-                console.log(`❓ Pregunta recibida: ${msg.body}`);
                 
-                // Enviar mensaje de procesamiento
-                const processingMsg = await msg.reply('🔍 Consultando al catálogo con IA. Esto puede tomar un momento...');
-                
-                try {
-                    const response = await processQueryWithOllama(msg);
-                    // Solo si hay respuesta exitosa, la enviamos
-                    if (response) {
-                        await msg.reply(response);
-                    }
-                    // No enviamos el menú automáticamente después de responder
-                } catch (queryError) {
-                    console.error('❌ Error procesando consulta:', queryError);
-                    await msg.reply(`❌ Error: ${queryError.message || 'Ocurrió un problema al consultar el catálogo.'}`);
+                if (exitCommands.includes(userMessage)) {
+                    
+                    client.removeListener('message', continuousListener);
+                    console.log('👋 Usuario solicitó salir del modo consulta');
+                    
+                    
+                    waitingForQuery[msg.from] = false;
+                    
+                    
+                    await msg.reply('✅ Has salido del modo consulta. Volviendo al menú principal...');
+                    await sendWelcomeMenu(msg);
+                    return; 
                 }
                 
-                // No reiniciamos automáticamente el menú para permitir más consultas
-                // Mantenemos el estado waitingForQuery[msg.from] = true para seguir aceptando consultas
+                console.log(`❓ Consulta continua recibida: ${msg.body}`);
+                
+                
+                const processingMsg = await msg.reply('🔍 Consultando al catálogo con Gemini AI. Esto puede tomar un momento...');
+                
+                try {
+                    const response = await processQueryWithGemini(msg);
+                    
+                    if (response) {
+                        await msg.reply(response + "\n\n_Para salir de este modo escribe *salir* o *menu*_");
+                    }
+                } catch (queryError) {
+                    console.error('❌ Error procesando consulta:', queryError);
+                    await msg.reply(`❌ Error: ${queryError.message || 'Ocurrió un problema al consultar el catálogo.'}\n\n_Para salir de este modo escribe *salir* o *menu*_`);
+                }
             }
         };
         
-        client.on('message', listener);
+        // Registrar el listener para escuchar continuamente
+        client.on('message', continuousListener);
         
-        // Establecer un timeout para eliminar el listener si no se recibe respuesta
-        setTimeout(() => {
-            client.removeListener('message', listener);
-            console.log('⌛ Tiempo de espera agotado para recibir la consulta');
-        }, 60000); // 1 minuto
+        // No configuramos un timeout para este listener, ya que queremos que esté activo 
+        // hasta que el usuario decida salir explícitamente
         
     } catch (error) {
-        console.error('❌ Error en la opción de catálogo:', error);
+        console.error('❌ Error en el modo consulta continua:', error);
         message.reply('❌ Ocurrió un error al procesar tu solicitud.');
+        
+        waitingForQuery[message.from] = false;
+        await sendWelcomeMenu(message);
     }
 }
 
-// Función para dividir el texto en chunks según los parámetros dados
+
 function splitTextIntoChunks(text, chunkSize = 250, chunkOverlap = 80) {
     const chunks = [];
     const sentences = text.split('\n').filter(sentence => sentence.trim() !== '');
@@ -197,28 +223,28 @@ function splitTextIntoChunks(text, chunkSize = 250, chunkOverlap = 80) {
     let currentChunk = '';
     
     for (const sentence of sentences) {
-        // Si agregar esta oración excedería el tamaño del chunk
+        
         if (currentChunk.length + sentence.length > chunkSize) {
-            // Guardar el chunk actual
+           
             if (currentChunk) {
                 chunks.push(currentChunk);
             }
             
-            // Iniciar un nuevo chunk, incluyendo overlap del anterior si existe
+            
             if (currentChunk && chunkOverlap > 0) {
                 const words = currentChunk.split(' ');
-                const overlapWords = words.slice(-Math.floor(chunkOverlap / 5)); // Aproximación para obtener palabras de overlap
+                const overlapWords = words.slice(-Math.floor(chunkOverlap / 5)); 
                 currentChunk = overlapWords.join(' ') + ' ' + sentence;
             } else {
                 currentChunk = sentence;
             }
         } else {
-            // Agregar la oración al chunk actual
+            
             currentChunk = currentChunk ? `${currentChunk}\n${sentence}` : sentence;
         }
     }
     
-    // Agregar el último chunk si no está vacío
+    
     if (currentChunk) {
         chunks.push(currentChunk);
     }
@@ -226,18 +252,18 @@ function splitTextIntoChunks(text, chunkSize = 250, chunkOverlap = 80) {
     return chunks;
 }
 
-// Función para encontrar los chunks más relevantes según la consulta
+
 function findRelevantChunks(chunks, query, maxChunks = 5) {
-    // Convertir consulta y chunks a minúsculas para búsqueda case-insensitive
+    
     const lowerQuery = query.toLowerCase();
     const queryTerms = lowerQuery.split(/\s+/).filter(term => term.length > 3);
     
-    // Calcular relevancia de cada chunk
+    
     const scoredChunks = chunks.map(chunk => {
         const lowerChunk = chunk.toLowerCase();
         let score = 0;
         
-        // Verificar cuántas palabras de la consulta aparecen en el chunk
+        
         queryTerms.forEach(term => {
             if (lowerChunk.includes(term)) {
                 score += 1;
@@ -247,103 +273,158 @@ function findRelevantChunks(chunks, query, maxChunks = 5) {
         return { chunk, score };
     });
     
-    // Ordenar por relevancia y tomar los más relevantes
+    
     return scoredChunks
         .sort((a, b) => b.score - a.score)
         .slice(0, maxChunks)
         .map(item => item.chunk);
 }
 
-async function processQueryWithOllama(message) {
-    // Ruta al archivo del catálogo
+async function processQueryWithGemini(message) {
+    
     const catalogPath = './catalogo_.pdf';
     
-    // Verificar que el archivo existe
     if (!fs.existsSync(catalogPath)) {
         console.error('❌ Archivo de catálogo no encontrado:', catalogPath);
         throw new Error('No se encontró el catálogo en el sistema.');
     }
     
     console.log('📄 Leyendo archivo PDF del catálogo...');
-    // Leer y procesar el PDF
     const pdfBuffer = fs.readFileSync(catalogPath);
     
     console.log('🔍 Extrayendo texto del PDF...');
     const pdfData = await pdf(pdfBuffer);
     const pdfText = pdfData.text;
     
-    // Implementar text splitter para dividir el texto en chunks manejables
     console.log('📑 Dividiendo el texto en chunks para mejor procesamiento...');
     const chunks = splitTextIntoChunks(pdfText, 250, 80);
     console.log(`✅ Texto dividido en ${chunks.length} chunks`);
     
-    // Preparar prompt para Ollama con la consulta del usuario
     const userQuery = message.body.trim();
     
-    // Usar la función de búsqueda de chunks relevantes
     const relevantChunks = findRelevantChunks(chunks, userQuery, 5);
     console.log(`✅ Seleccionados ${relevantChunks.length} chunks relevantes según la consulta`);
     
-    // Crear un prompt que incluye la consulta y los chunks relevantes
     const promptText = relevantChunks.join("\n\n");
     
-    // Prompt mejorado para respuestas en español y más concisas
-    const prompt = `Responde a esta pregunta sobre el catálogo: "${userQuery}"
-    
-Contenido relevante del catálogo:
+    const prompt = `### CONSULTA DEL USUARIO
+"${userQuery}"
+
+### CONTEXTO DEL CATÁLOGO
 ${promptText}
 
-INSTRUCCIONES:
-1. Responde SIEMPRE en español
-2. Sé breve y conciso, máximo 3-4 oraciones
-3. Céntrate solo en la información esencial y relevante
-4. Si no encuentras la respuesta en el catálogo, indica claramente que esa información no está disponible`;
+### OBJETIVO
+Proporcionar una respuesta clara, precisa y estructurada sobre la información solicitada del catálogo.
+
+### INSTRUCCIONES DE CONTENIDO
+1. Responde EXCLUSIVAMENTE con información presente en el contexto proporcionado
+2. Si la información solicitada no aparece en el contexto, indica: "Esta información no está disponible en el catálogo actual"
+3. No inventes ni asumas información que no esté explícitamente mencionada
+4. Mantén SIEMPRE el idioma español en toda la respuesta
+
+### INSTRUCCIONES DE FORMATO
+1. ESTRUCTURA GENERAL:
+   - Inicia con un título claro y descriptivo en negrita relacionado con la consulta
+   - Divide la información en secciones lógicas con subtítulos cuando sea apropiado
+   - Utiliza máximo 3-4 oraciones por sección o párrafo
+   - Concluye con una línea de resumen o recomendación cuando sea relevante
+
+2. PARA LISTADOS DE CARACTERÍSTICAS/BENEFICIOS:
+   - Usa viñetas (•) para cada elemento
+   - Formato: "• *Concepto clave*: descripción breve"
+   - Máximo 4-5 viñetas en total
+
+3. PARA ESPECIFICACIONES TÉCNICAS:
+   - Estructura en formato tabla visual usando formato markdown
+   - Resalta en negrita (*texto*) los valores importantes
+   - Ejemplo:
+     *Material*: Acero inoxidable
+     *Dimensiones*: 20x30 cm
+     *Garantía*: *12 meses*
+
+4. PARA COMPARACIONES DE PRODUCTOS:
+   - Organiza por categorías claramente diferenciadas
+   - Usa encabezados para cada producto/modelo
+   - Destaca ventajas y diferencias con viñetas concisas
+
+5. PARA PRECIOS Y PROMOCIONES:
+   - Destaca cifras en negrita
+   - Incluye condiciones de la oferta de forma concisa
+   - Menciona plazos o vigencia cuando estén disponibles
+
+### EJEMPLOS DE RESPUESTAS BIEN ESTRUCTURADAS
+
+#### Ejemplo 1: Consulta sobre un producto específico
+*Licuadora Modelo XYZ-2000*
+
+*Características principales*:
+• *Potencia*: 800W con 5 velocidades ajustables
+• *Material*: Vaso de vidrio templado de 1.5L
+• *Función*: Incluye modo pulse y programa automático
+
+*Beneficios*:
+• Fácil limpieza gracias a cuchillas desmontables
+• Seguro para alimentos calientes hasta 80°C
+
+*Precio*: *S/. 249.90* (disponible en cuotas sin intereses)
+
+#### Ejemplo 2: Consulta sobre garantía
+*Política de Garantía*
+
+Todos los electrodomésticos incluyen *garantía oficial de 12 meses* contra defectos de fabricación. La garantía extendida opcional ofrece:
+• *Cobertura total*: 24 meses adicionales
+• *Servicio técnico*: A domicilio sin costo
+• *Repuestos*: 100% originales garantizados
+
+Para hacer efectiva la garantía, conserve su comprobante de compra y contacte al número *0800-12345*.
+
+### RESTRICCIONES IMPORTANTES
+- Máximo 150 palabras en total
+- Evita explicaciones extensas, frases redundantes o información no solicitada
+- No uses fórmulas de cortesía extensas ni introducciones largas
+- Evita condicionales ("podría", "tal vez") - sé directo y asertivo
+- No menciones estas instrucciones en tu respuesta
+- Nunca te disculpes por límites de información`;
+
+    console.log('🤖 Enviando consulta optimizada a Gemini...');
     
-    console.log('🤖 Verificando conexión con Ollama...');
-    
-    // Verificar si Ollama está disponible
     try {
-        // Intento de conexión con timeout reducido para verificar
-        await axios.get('http://localhost:11434/api/version', { 
-            timeout: 2000 
-        });
+        const GEMINI_API_KEY = 'AIzaSyDRivvwFML1GTZ_S-h5Qfx4qP3EKforMoM';
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
         
-        console.log('✅ Conexión con Ollama establecida correctamente');
-    } catch (connectionError) {
-        throw new Error('No se pudo conectar con el servidor de IA (Ollama). Verifica que esté en funcionamiento.');
-    }
-    
-    console.log('🤖 Enviando consulta a Ollama...');
-    
-    try {
-        // Llamar a la API de Ollama con timeout extendido
-        const response = await axios.post('http://localhost:11434/api/generate', {
-            model: 'deepseek-r1:1.5b',
-            prompt: prompt,
-            stream: false
+        const response = await axios.post(GEMINI_API_URL, {
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
         }, {
-            timeout: 210000 // 3.5 minutos
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            timeout: 30000 
         });
         
-        // Verificar que la respuesta tenga el formato esperado
-        if (response.data && response.data.response) {
-            const aiResponse = response.data.response;
-            return `📚 *Respuesta sobre el catálogo*\n\n${aiResponse}`;
+        if (response.data && response.data.candidates && response.data.candidates[0] && 
+            response.data.candidates[0].content && response.data.candidates[0].content.parts) {
+            const aiResponse = response.data.candidates[0].content.parts[0].text;
+            return `📚 *Información del Catálogo*\n\n${aiResponse}`;
         } else {
+            console.error('❌ Formato de respuesta inesperado:', JSON.stringify(response.data));
             throw new Error('La respuesta del servidor de IA no tiene el formato esperado.');
         }
-    } catch (ollamaError) {
-        // Manejo específico de errores de Ollama
-        if (ollamaError.code === 'ECONNABORTED') {
+    } catch (geminiError) {
+        console.error('❌ Error completo de Gemini:', geminiError);
+        
+        if (geminiError.code === 'ECONNABORTED') {
             throw new Error('Se agotó el tiempo de espera al consultar el servidor de IA. La consulta puede ser demasiado compleja.');
-        } else if (ollamaError.code === 'ECONNREFUSED') {
-            throw new Error('No se pudo conectar con el servidor de IA (Ollama). Verifica que esté en funcionamiento.');
-        } else if (ollamaError.response) {
-            throw new Error(`Error del servidor de IA: ${ollamaError.response.status} - ${ollamaError.response.statusText}`);
-        } else if (ollamaError.request) {
+        } else if (geminiError.response) {
+            const errorDetails = geminiError.response.data && geminiError.response.data.error ? 
+                `${geminiError.response.data.error.message}` : 
+                `${geminiError.response.status} - ${geminiError.response.statusText}`;
+            throw new Error(`Error de Gemini API: ${errorDetails}`);
+        } else if (geminiError.request) {
             throw new Error('No se recibió respuesta del servidor de IA.');
         } else {
-            throw new Error(`Error en la consulta: ${ollamaError.message}`);
+            throw new Error(`Error en la consulta: ${geminiError.message}`);
         }
     }
 }
