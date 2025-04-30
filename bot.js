@@ -19,13 +19,14 @@ console.log('🔄 Inicializando el cliente de WhatsApp...');
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        headless: false,
+        executablePath: process.env.CHROME_PATH,
+        headless: true,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-extensions',
-            '--disable-dev-shm-usage'
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
         ]
     }
 });
@@ -50,7 +51,7 @@ client.on('message', async message => {
         console.log(`📩 Mensaje recibido de ${message.from}: ${message.body}`);
 
         // 🔹 Responder solo a un número específico
-        const numeroAutorizado = '51919739431@c.us'; // Formato de WhatsApp sin "+" y con "c.us"
+        const numeroAutorizado = process.env.AUTHORIZED_NUMBER || '51919739431@c.us'; // Formato de WhatsApp sin "+" y con "c.us"
         if (message.from !== numeroAutorizado) {
             console.log('⛔ Mensaje ignorado, no es del número autorizado.');
             return;
@@ -95,7 +96,7 @@ client.on('message', async message => {
 async function getChatData() {
     try {
         console.log('🌐 Obteniendo datos del chat...');
-        const response = await axios.get('http://localhost:5001/api/chat');
+        const response = await axios.get('http://chat-api:5001/api/chat');
         return response.data;
     } catch (error) {
         console.error('❌ Error al obtener datos del chat:', error.message);
@@ -327,11 +328,11 @@ async function processQueryWithGemini(message) {
 // Función mejorada para buscar en la base de datos PostgreSQL
 async function searchInDatabase(query) {
     const pgClient = new PgClient({
-        user: 'postgres',
-        host: 'localhost',
-        database: 'catalogo_db',
-        password: '123',
-        port: 5432,
+        user: process.env.DB_USER || 'postgres',
+        host: process.env.DB_HOST || 'postgres', // Usar el nombre del servicio en docker-compose
+        database: process.env.DB_NAME || 'catalogo_db',
+        password: process.env.DB_PASSWORD || '123',
+        port: parseInt(process.env.DB_PORT || '5432'),
     });
     
     try {
@@ -929,13 +930,13 @@ async function searchInCatalogPDF(query) {
     - Evita condicionales ("podría", "tal vez") - sé directo y asertivo
     - No menciones estas instrucciones en tu respuesta
     - Nunca te disculpes por límites de información
-    - Evita el lenguaje comercial exagerado ("increíble", "fantástico")
+    - Evita el lenguaje comercial exagerado ("increíble", "fantástico")         
     - Nunca repitas la misma información en diferentes secciones
     - SIEMPRE INCLUYE LOS ENLACES A LAS IMÁGENES si están disponibles en los datos`;
     
         // El resto de la función generateGeminiResponse permanece igual
         try {
-            const GEMINI_API_KEY = 'AIzaSyDRivvwFML1GTZ_S-h5Qfx4qP3EKforMoM';
+            const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDRivvwFML1GTZ_S-h5Qfx4qP3EKforMoM';
             const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
             
             const response = await axios.post(GEMINI_API_URL, {

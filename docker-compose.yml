@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  whatsapp-bot:
+    build: .
+    container_name: whatsapp-bot
+    restart: unless-stopped
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+      - whatsapp-data:/usr/src/app/.wwebjs_auth
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DB_USER=${DB_USER}
+      - DB_HOST=postgres
+      - DB_NAME=${DB_NAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PORT=5432
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CHROME_PATH=${CHROME_PATH}
+      - AUTHORIZED_NUMBER=${AUTHORIZED_NUMBER}
+    ports:
+      - "5002:5002"
+    depends_on:
+      - postgres
+    networks:
+      - whatsapp-network
+  
+  postgres:
+    image: postgres:13-alpine
+    container_name: postgres-whatsapp
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - whatsapp-network
+  
+  chat-api:
+    build: ./api
+    container_name: chat-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DB_USER=${DB_USER}
+      - DB_HOST=postgres
+      - DB_NAME=${DB_NAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PORT=5432
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AUTHORIZED_NUMBER=${AUTHORIZED_NUMBER}
+      - CHROME_PATH=${CHROME_PATH}
+    ports:
+      - "5001:5001"
+    depends_on:
+      - postgres
+    networks:
+      - whatsapp-network
+
+volumes:
+  whatsapp-data:
+  postgres-data:
+
+networks:
+  whatsapp-network:
+    driver: bridge

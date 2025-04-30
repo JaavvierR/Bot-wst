@@ -356,3 +356,180 @@ whatsapp-web.js
       └─ update-version
 
 ```
+```
+whatsapp-web.js
+├─ .editorconfig
+├─ .eslintrc.json
+├─ .jsdoc.json
+├─ api
+├─ bot.js
+├─ catalogo_.pdf
+├─ CODE_OF_CONDUCT.md
+├─ docker-compose.yml
+├─ Dockerfile
+├─ docs
+│  ├─ authStrategies_BaseAuthStrategy.js.html
+│  ├─ authStrategies_LegacySessionAuth.js.html
+│  ├─ authStrategies_LocalAuth.js.html
+│  ├─ authStrategies_NoAuth.js.html
+│  ├─ authStrategies_RemoteAuth.js.html
+│  ├─ Base.html
+│  ├─ BaseAuthStrategy.html
+│  ├─ Broadcast.html
+│  ├─ BusinessContact.html
+│  ├─ Buttons.html
+│  ├─ Call.html
+│  ├─ Chat.html
+│  ├─ Client.html
+│  ├─ Client.js.html
+│  ├─ ClientInfo.html
+│  ├─ CNAME
+│  ├─ Contact.html
+│  ├─ css
+│  │  └─ baseline.css
+│  ├─ global.html
+│  ├─ GroupChat.html
+│  ├─ GroupNotification.html
+│  ├─ index.html
+│  ├─ InterfaceController.html
+│  ├─ Label.html
+│  ├─ LegacySessionAuth.html
+│  ├─ List.html
+│  ├─ LocalAuth.html
+│  ├─ LocalWebCache.html
+│  ├─ Location.html
+│  ├─ Message.html
+│  ├─ MessageMedia.html
+│  ├─ NoAuth.html
+│  ├─ Order.html
+│  ├─ Poll.html
+│  ├─ PollVote.html
+│  ├─ PrivateChat.html
+│  ├─ PrivateContact.html
+│  ├─ Product.html
+│  ├─ Reaction.html
+│  ├─ RemoteAuth.html
+│  ├─ RemoteWebCache.html
+│  ├─ scripts
+│  │  ├─ jquery.min.js
+│  │  ├─ jsdoc-toc.js
+│  │  ├─ lang-css.js
+│  │  ├─ linenumber.js
+│  │  ├─ prettify.js
+│  │  ├─ scrollanchor.js
+│  │  └─ tree.jquery.js
+│  ├─ structures_Base.js.html
+│  ├─ structures_Broadcast.js.html
+│  ├─ structures_BusinessContact.js.html
+│  ├─ structures_Buttons.js.html
+│  ├─ structures_Call.js.html
+│  ├─ structures_Chat.js.html
+│  ├─ structures_ClientInfo.js.html
+│  ├─ structures_Contact.js.html
+│  ├─ structures_GroupChat.js.html
+│  ├─ structures_GroupNotification.js.html
+│  ├─ structures_Label.js.html
+│  ├─ structures_List.js.html
+│  ├─ structures_Location.js.html
+│  ├─ structures_Message.js.html
+│  ├─ structures_MessageMedia.js.html
+│  ├─ structures_Order.js.html
+│  ├─ structures_Payment.js.html
+│  ├─ structures_Poll.js.html
+│  ├─ structures_PollVote.js.html
+│  ├─ structures_PrivateChat.js.html
+│  ├─ structures_PrivateContact.js.html
+│  ├─ structures_Product.js.html
+│  ├─ structures_ProductMetadata.js.html
+│  ├─ structures_Reaction.js.html
+│  ├─ Util.html
+│  ├─ util_Constants.js.html
+│  ├─ util_Injected.js.html
+│  ├─ util_Injected_LegacyStore.js.html
+│  ├─ util_Injected_Store.js.html
+│  ├─ util_Injected_Utils.js.html
+│  ├─ util_InterfaceController.js.html
+│  ├─ util_Puppeteer.js.html
+│  ├─ util_Util.js.html
+│  ├─ WebCache.html
+│  ├─ webCache_LocalWebCache.js.html
+│  ├─ webCache_RemoteWebCache.js.html
+│  └─ webCache_WebCache.js.html
+├─ example.js
+├─ index.d.ts
+├─ index.js
+├─ LICENSE
+├─ package.json
+├─ productos.xlsx
+├─ README.md
+├─ shell.js
+├─ src
+│  ├─ authStrategies
+│  │  ├─ BaseAuthStrategy.js
+│  │  ├─ LocalAuth.js
+│  │  ├─ NoAuth.js
+│  │  └─ RemoteAuth.js
+│  ├─ Client.js
+│  ├─ factories
+│  │  ├─ ChatFactory.js
+│  │  └─ ContactFactory.js
+│  ├─ structures
+│  │  ├─ Base.js
+│  │  ├─ Broadcast.js
+│  │  ├─ BusinessContact.js
+│  │  ├─ Buttons.js
+│  │  ├─ Call.js
+│  │  ├─ Chat.js
+│  │  ├─ ClientInfo.js
+│  │  ├─ Contact.js
+│  │  ├─ GroupChat.js
+│  │  ├─ GroupNotification.js
+│  │  ├─ index.js
+│  │  ├─ Label.js
+│  │  ├─ List.js
+│  │  ├─ Location.js
+│  │  ├─ Message.js
+│  │  ├─ MessageMedia.js
+│  │  ├─ Order.js
+│  │  ├─ Payment.js
+│  │  ├─ Poll.js
+│  │  ├─ PollVote.js
+│  │  ├─ PrivateChat.js
+│  │  ├─ PrivateContact.js
+│  │  ├─ Product.js
+│  │  ├─ ProductMetadata.js
+│  │  └─ Reaction.js
+│  ├─ util
+│  │  ├─ Constants.js
+│  │  ├─ Injected
+│  │  │  ├─ AuthStore
+│  │  │  │  ├─ AuthStore.js
+│  │  │  │  └─ LegacyAuthStore.js
+│  │  │  ├─ LegacyStore.js
+│  │  │  ├─ Store.js
+│  │  │  └─ Utils.js
+│  │  ├─ InterfaceController.js
+│  │  ├─ Puppeteer.js
+│  │  └─ Util.js
+│  └─ webCache
+│     ├─ LocalWebCache.js
+│     ├─ RemoteWebCache.js
+│     ├─ WebCache.js
+│     └─ WebCacheFactory.js
+├─ temp_images
+├─ tests
+│  ├─ client.js
+│  ├─ helper.js
+│  ├─ README.md
+│  └─ structures
+│     ├─ chat.js
+│     ├─ group.js
+│     └─ message.js
+└─ tools
+   ├─ changelog.sh
+   ├─ publish
+   └─ version-checker
+      ├─ .version
+      └─ update-version
+
+```
